@@ -4,3 +4,4 @@ __pycache__
 PyAnvilEditor/
 blocks.json
 blocks_ids.json
+env
