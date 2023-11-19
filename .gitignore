@@ -2,3 +2,5 @@ myWorld/
 __pycache__
 .DS_Store
 PyAnvilEditor/
+blocks.json
+blocks_ids.json
