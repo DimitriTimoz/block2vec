@@ -1,8 +1,13 @@
 from model import *
 import locale, os, sys
 import numpy as np
+import json
 
-# local module
+from nbt.chunk import Chunk
+from nbt.region import InconceivedChunk
+from nbt.world import WorldFolder
+
+
 try:
     import nbt
 except ImportError:
@@ -12,7 +17,6 @@ except ImportError:
         raise
     sys.path.append(extrasearchpath)
     
-from nbt.world import WorldFolder
 
 def to_section(y):
     return y // 16
@@ -49,22 +53,65 @@ def parse_block_data(data, bits_per_value):
 
     return block_states
 
+def get_block_in_chunk(chunk, cx, cy, cz):
+    block_states = chunk["block_states"]
+    palette = block_states["palette"]
+    bits_per_value = max(int(np.ceil(np.log2(len(palette)))), 1)
+    if "data" in block_states.keys():
+        data = block_states["data"]
+        block_states_indices = parse_block_data(data, bits_per_value)
+        # Now map these indices to blocks using the palette
+        blocks = [palette[index] if index < len(palette) else None for index in block_states_indices]
+        index = (((cy * 16) + cz) * 16) + cx
+        if blocks[index] is None:
+            print("none")
+            return {"Name": "minecraft:air"}
+        return blocks[index]
+    else:
+        block = block_states[0][0]
+        return block
+
+def get_block(world, pos):
+    x, y, z = pos
+    rx,cx = divmod(x,32)
+    rz,cz = divmod(z,32)
+    if (rx,rz) not in world.regions and (rx,rz) not in world.regionfiles:
+        return
+    region = world.get_region(rx,rz)
+    try:
+        nbt = region.get_nbt(cx,cz)
+    except InconceivedChunk:
+        return "minecraft:air"
+    chunk_column = nbt.tags[9]
+    y += 64
+    cy = y // 16
+    chunk = chunk_column[cy]
+    cx, cy, cz = (x % 16, y % 16, z % 16)
+    block = get_block_in_chunk(chunk, cx, cy, cz)
+    block = block["Name"]
+    return block
+
 world = WorldFolder("myWorld")
 
-for region in world.iter_regions():
-    for chunk_columns in region.iter_chunks():
-        for chunk in chunk_columns["sections"]:
-            y_col = chunk["Y"]
-            block_states = chunk["block_states"]
-            palette = block_states["palette"]
-            bits_per_value = max(int(np.ceil(np.log2(len(palette)))), 1)
-            if "data" in block_states.keys():
-                data = block_states["data"]
-                block_states_indices = parse_block_data(data, bits_per_value)
-                # Now map these indices to blocks using the palette
-                blocks = [palette[index] if index < len(palette) else None for index in block_states_indices]
-                for block in blocks:
-                    if block is None:
-                        continue
-                    print(block["Name"])
+# load the block ids
+f = open("blocks_ids.json", "r")
+blocks_ids = json.load(f)
+
+
+size_box = 32
+window_size = 1
+for x in range(window_size, size_box-window_size):
+    for y in range(-64+window_size, 120-window_size):
+        for z in range(window_size, size_box - window_size):
+            window = np.zeros((window_size * 2 + 1, window_size * 2 + 1, window_size * 2 + 1))
+            for wx in range(x-window_size, x+window_size+1):
+                for wy in range(y-window_size, y+window_size+1):
+                    for wz in range(z-window_size, z+window_size+1):
+                        block = get_block(world, (wx, wy, wz))
+                        wix = wx - (x-window_size)
+                        wiy = wy - (y-window_size)
+                        wiz = wz - (z-window_size)
+                        window[wix, wiy, wiz] = blocks_ids[str(block)]
+            print(window)
+
 

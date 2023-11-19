@@ -17,7 +17,7 @@ ids = {}
 for block in blocks:
     id = block["id"]
     name = "minecraft:" + block["name"]
-    ids[id] = name
+    ids[name] = id
     
 f = open("blocks_ids.json", "w")
 json.dump(ids, f)
