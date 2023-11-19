@@ -4,7 +4,13 @@ import numpy as np
 import json
 
 from nbt.world import WorldFolder
+
 from world_discover import get_block
+from model import Block2Vec
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
 try:
     import nbt
@@ -14,9 +20,6 @@ except ImportError:
     if not os.path.exists(os.path.join(extrasearchpath,'nbt')):
         raise
     sys.path.append(extrasearchpath)
-    
-
-
 
 world = WorldFolder("myWorld")
 
@@ -24,12 +27,23 @@ world = WorldFolder("myWorld")
 f = open("blocks_ids.json", "r")
 blocks_ids = json.load(f)
 
+# Hyperparameters
+embedding_dim = 40
+learning_rate = 0.001
+
+model = Block2Vec(len(blocks_ids), embedding_dim)
+loss_function = nn.NLLLoss()
+optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+
 
 size_box = 32
 window_size = 1
+total_loss = 0
+i = 0
 for x in range(window_size, size_box-window_size):
     for y in range(-64+window_size, 120-window_size):
         for z in range(window_size, size_box - window_size):
+            i += 1
             window = np.zeros((window_size * 2 + 1, window_size * 2 + 1, window_size * 2 + 1))
             for wx in range(x-window_size, x+window_size+1):
                 for wy in range(y-window_size, y+window_size+1):
@@ -39,6 +53,28 @@ for x in range(window_size, size_box-window_size):
                         wiy = wy - (y-window_size)
                         wiz = wz - (z-window_size)
                         window[wix, wiy, wiz] = blocks_ids[str(block)]
-            print(window)
+            
+            window = window.flatten()
+            center = window_size + (window_size * (2 * window_size + 1) + (2 * window_size + 1))
+            center_block_idx = torch.tensor([window[center]], dtype=torch.long)
+
+            # Iterate over each context block
+            for j, context_block in enumerate(window):
+                if j == center:
+                    continue  # Skip the center block
+                context_block_idx = torch.tensor([context_block], dtype=torch.long)
+                
+                model.zero_grad()
+                log_probs = model(center_block_idx)
+                loss = loss_function(log_probs, context_block_idx)
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
+        if i > 100:
+            i = 0
+            print(f'Total Loss: {total_loss}')
+            total_loss = 0
+
+
 
 
