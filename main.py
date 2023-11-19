@@ -58,12 +58,13 @@ for region in world.iter_regions():
             block_states = chunk["block_states"]
             palette = block_states["palette"]
             bits_per_value = max(int(np.ceil(np.log2(len(palette)))), 1)
-            print(bits_per_value)
             if "data" in block_states.keys():
                 data = block_states["data"]
                 block_states_indices = parse_block_data(data, bits_per_value)
                 # Now map these indices to blocks using the palette
-                blocks = [palette[index][0] if index < len(palette) else None for index in block_states_indices]
-                print(blocks)
-                exit()
+                blocks = [palette[index] if index < len(palette) else None for index in block_states_indices]
+                for block in blocks:
+                    if block is None:
+                        continue
+                    print(block["Name"])
 
