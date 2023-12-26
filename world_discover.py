@@ -56,8 +56,8 @@ def get_block_in_chunk(chunk, cx, cy, cz):
 
 def get_block(world, pos):
     x, y, z = pos
-    rx,cx = divmod(x,32)
-    rz,cz = divmod(z,32)
+    rx,cx = divmod(x, 32)
+    rz,cz = divmod(z, 32)
     if (rx,rz) not in world.regions and (rx,rz) not in world.regionfiles:
         return
     region = world.get_region(rx,rz)

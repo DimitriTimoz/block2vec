@@ -5,3 +5,5 @@ PyAnvilEditor/
 blocks.json
 blocks_ids.json
 env
+worlds/
+datasets/

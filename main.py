@@ -21,7 +21,7 @@ except ImportError:
         raise
     sys.path.append(extrasearchpath)
 
-world = WorldFolder("myWorld")
+world = WorldFolder("World")
 
 # load the block ids
 f = open("blocks_ids.json", "r")
@@ -55,26 +55,7 @@ for x in range(window_size, size_box-window_size):
                         window[wix, wiy, wiz] = blocks_ids[str(block)]
             
             window = window.flatten()
-            center = window_size + (window_size * (2 * window_size + 1) + (2 * window_size + 1))
-            center_block_idx = torch.tensor([window[center]], dtype=torch.long)
-
-            # Iterate over each context block
-            for j, context_block in enumerate(window):
-                if j == center:
-                    continue  # Skip the center block
-                context_block_idx = torch.tensor([context_block], dtype=torch.long)
-                
-                model.zero_grad()
-                log_probs = model(center_block_idx)
-                loss = loss_function(log_probs, context_block_idx)
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-        if i > 100:
-            i = 0
-            print(f'Total Loss: {total_loss}')
-            total_loss = 0
-
+            print(window)
 
 
 
