@@ -1,13 +1,28 @@
 import os
-from datasets import Block3DDataset
+import concurrent.futures
+from dataset import Block3DDataset
 
-# Get all folders in worlds folder
-all_worlds = os.listdir("worlds")
+def process_world(world):
+    worlds_folder = "worlds"
+    datasets_folder = "datasets"
 
-# Create a dataset for each world
-for world in all_worlds:
-    data_path = "worlds/" + world
-    dataset_path = "datasets/" + world + ".pt"
+    data_path = os.path.join(worlds_folder, world)
+    dataset_path = os.path.join(datasets_folder, world + ".pt")
     dataset = Block3DDataset(dataset_path)
-    dataset.generate_pairs(2)
+    dataset.generate_pairs(data_path, window_size=2)
     dataset.save()
+
+def main():
+    worlds_folder = "worlds"
+    all_worlds = os.listdir(worlds_folder)
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {executor.submit(process_world, world) for world in all_worlds}
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                print(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    main()

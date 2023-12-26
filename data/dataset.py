@@ -1,7 +1,13 @@
+import os
+import json
+
 import torch
 from torch.utils.data import Dataset
 
-import os
+import numpy as np
+from nbt.world import WorldFolder
+
+from world_discover import get_block
 
 class Block3DDataset(Dataset):
     def __init__(self, path):
@@ -10,7 +16,7 @@ class Block3DDataset(Dataset):
         self.load(path)
         
         
-    def generate_pairs(self, window_size=2):
+    def generate_pairs(self, path, window_size=2):
         """
         Generate pairs of (target, context) blocks from the Minecraft data.
         Target is the center block.
@@ -19,8 +25,62 @@ class Block3DDataset(Dataset):
         
         # We use a sliding window to generate the pairs
         # The window size is the number of blocks around the center block
+        name = os.path.basename(path)
         self.window_size = window_size
+        print(f"Loading world {name} ...")
+        world = WorldFolder(path)
+        print(f"World {name} loaded")
+
+        f = open("blocks_ids.json", "r")
+        blocks_ids = dict(json.load(f))
+        f = open("biomes_ids.json", "r")
+        biomes_ids = dict(json.load(f))
+
+        block_context = np.zeros((window_size * 2 + 1, window_size * 2 + 1, window_size * 2 + 1))
+        biome_context = 0
+
+        # Iterate over all the chunks in the world
+        for chunk in world.iter_nbt():
+            for section in chunk["sections"]:
+                if "biomes" not in section.keys():
+                    continue
+                biomes = section["biomes"]
+                biomes_palette = biomes["palette"]
+                
+                
+                block_states = section["block_states"]
+                block_palette = block_states["palette"]
+                
+                if len(biomes_palette) == 1:
+                    biome_context = np.full((16, 16, 16), biomes_ids[str(biomes_palette[0])])
+                    print("biome_context", biome_context)
+                elif len(biomes_palette) > 1:
+                    # Find the biome of the center block
+                    print("biomes_palette", biomes_palette)
+                    return
+                else:
+                    continue
+                
+                if len(block_palette) == 1:
+                    id = blocks_ids.get(str(block_palette[0]["Name"]))
+                    if id is None:
+                        print(f"Unknown block: {block_palette[0]}")
+                        continue
+                    # Take only 10% of full blocks
+                    if np.random.rand() > 0.1:
+                        continue
+                    block_context = np.full((16, 16, 16), id)
+                    print("block_context", block_context)
+                elif len(block_palette) > 1:
+                    pass
+                else:
+                    continue
+        # Target: the blocks around the center block and the biome
+        # the data will be one-hot encoded
+        # Context: the center block
+        # the data will be one-hot encoded
         
+                
         self.processed = True
 
     def __len__(self):

@@ -5,7 +5,7 @@ import json
 
 from nbt.world import WorldFolder
 
-from world_discover import get_block
+from data.world_discover import get_block
 from model import Block2Vec
 
 import torch
