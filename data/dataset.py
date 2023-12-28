@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 import numpy as np
 from nbt.world import WorldFolder
 
-from world_discover import get_block
+from world_discover import get_block, parse_block_data
 
 class Block3DDataset(Dataset):
     def __init__(self, path):
@@ -57,7 +57,8 @@ class Block3DDataset(Dataset):
                 elif len(biomes_palette) > 1:
                     # Find the biome of the center block
                     print("biomes_palette", biomes_palette)
-                    return
+                    print("biomes", biomes["data"])
+                    
                 else:
                     continue
                 
@@ -66,13 +67,19 @@ class Block3DDataset(Dataset):
                     if id is None:
                         print(f"Unknown block: {block_palette[0]}")
                         continue
-                    # Take only 10% of full blocks
-                    if np.random.rand() > 0.1:
+                    # Take only 5% of full blocks
+                    if np.random.rand() > 0.05:
                         continue
                     block_context = np.full((16, 16, 16), id)
                     print("block_context", block_context)
                 elif len(block_palette) > 1:
-                    pass
+                    print("block_palette", block_palette)
+                    print("block_states", block_states["data"])
+                    bits_per_value = max(int(np.ceil(np.log2(len(block_palette)))), 1)
+                    block_states_indices = parse_block_data(block_states["data"], bits_per_value)
+                    block_context = [block_palette[index] if index < len(block_palette) else None for index in block_states_indices]
+                    print("block_context", block_context)
+                    return
                 else:
                     continue
         # Target: the blocks around the center block and the biome
